@@ -84,4 +84,4 @@ Ingestion notes:
 - Upload limits: accepts PDF/DOCX/TXT; rejects files over 25MB and unsupported MIME types.
 
 ---
-This project was authored with OpenAI’s Codex via VS Code, with guidance and troubleshooting by Andrew McDaniel.
+This entire project was authored with OpenAI’s Codex via VS Code, with guidance and troubleshooting by Andrew McDaniel.
