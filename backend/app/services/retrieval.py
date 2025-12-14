@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Iterable
 
-from qdrant_client.models import FieldCondition, Filter, MatchValue
+from qdrant_client.models import FieldCondition, Filter, MatchValue, MatchAny
 
 from app.schemas.query import AnswerSource, QueryRequest, QueryResponse
 from app.services.openai_client import OpenAIClient
@@ -16,21 +16,21 @@ class RetrievalService:
     openai_client: OpenAIClient
 
     def answer(self, query: QueryRequest) -> QueryResponse:
+        sources = self.get_sources(query)
+        prompt = self._build_prompt(query.question, sources)
+        content = self.openai_client.chat(prompt)
+        return QueryResponse(answer=content, sources=sources)
+
+    def get_sources(self, query: QueryRequest) -> list[AnswerSource]:
         if not getattr(self.openai_client.client, "api_key", None):
-            return QueryResponse(
-                answer="Retrieval pipeline not yet configured. Set AIDOC_OPENAI_API_KEY and implement chunk retrieval.",
-                sources=[],
-            )
+            return []
 
         query_vector = self.openai_client.embed(query.question)
         qdrant_filter = self._build_filter(query)
         hits = self.vector_store.query(query_vector, limit=query.top_k, query_filter=qdrant_filter)
         filtered_hits = self._filter_hits(hits, query.min_score)
         deduped_hits = self._dedupe_hits(filtered_hits)
-        sources = self._build_sources(deduped_hits)
-        prompt = self._build_prompt(query.question, sources)
-        content = self.openai_client.chat(prompt)
-        return QueryResponse(answer=content, sources=sources)
+        return self._build_sources(deduped_hits)
 
     def format_sources(self, hits: Iterable[AnswerSource]) -> list[AnswerSource]:
         return list(hits)
@@ -87,10 +87,12 @@ class RetrievalService:
     def _build_filter(self, query: QueryRequest) -> Filter | None:
         conditions = []
         if query.document_ids:
-            doc_conditions = [
-                FieldCondition(key="document_id", match=MatchValue(value=doc_id)) for doc_id in query.document_ids
-            ]
-            conditions.append(Filter(should=doc_conditions, minimum_should_match=1))
+            conditions.append(
+                FieldCondition(
+                    key="document_id",
+                    match=MatchAny(any=query.document_ids),
+                )
+            )
 
         if query.user_id:
             conditions.append(

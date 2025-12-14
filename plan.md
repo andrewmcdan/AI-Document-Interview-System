@@ -19,6 +19,7 @@
 - Add re-chunk/re-embed workflow for model upgrades or parameter changes.
 - Add ingestion job tracking (status table, retries) and API to poll progress.
 - [x] Provide local filesystem storage option alongside S3/MinIO.
+- [x] Add AI-assisted document metadata suggestion endpoint (title/description from file text).
 
 ### Retrieval & QA
 - [x] Build basic retrieval path: embed query, search Qdrant, and assemble grounded prompt with citations.
@@ -54,11 +55,17 @@
 
 ### Frontend
 - Choose stack (Next.js or Vite+React) and scaffold: auth gate, document uploader, document list, chat view with citations, history sidebar.
-- Implement upload progress, ingest status polling, and error toasts.
 - [x] Scaffold basic frontend (Next.js) with upload, job status polling, chat, and document selection.
-- Add answer rendering with citation chips linking to document sections; show source previews.
-- Mobile-friendly layout and basic theming; add streaming display for answers.
-- Add frontend request signing/headers to send request IDs and optional user_id/doc filters.
+- [x] Add demo login to obtain JWT via `/auth/login`; shared auth state.
+- [x] Implement upload status with auto-polling until ingestion completes/fails (added batch upload + per-job refresh).
+- [x] Add AI-assisted title/description suggestion on upload.
+- [x] Add conversation history view, streaming answers, and ability to continue a thread.
+- Enhance chat UI with source snippets, citation chips, and doc filters; add typing/streaming indicator (streaming done; citations/filters partially).
+- Add document list filters/pagination and easy copy of IDs for chat filters.
+- [x] Improve layout/theming for readability and responsiveness; ensure request IDs/dev headers handled.
+- [x] Add admin reset screen for dev purge workflow.
+- Add toast/error banners and inline progress on uploads.
+- [x] Add AI-suggested conversation titles and inline title editing.
 
 ## Future Plans
 - External worker/queue (Celery/RQ/Arq) for ingestion with retries and large files; virus scanning stub.
@@ -71,3 +78,10 @@
 - S3 bucket policies, signed URL expirations, encryption at rest.
 - Dependency scanning/vulnerability management.
 - Frontend enhancements: richer upload progress, error toasts, source previews, mobile polish, streaming display, request signing headers.
+
+## Deep Analysis (Proposed)
+- New Analysis jobs: background workflow to answer open-ended aggregations (e.g., “common rules across all handbooks”).
+- API: POST `/analysis` to start (task type, doc filters, budgets), GET `/analysis/{id}` for status/result. Persist themes with citations.
+- Pipeline: retrieve larger chunk sets per doc; map step extracts per-doc key bullets with citations; reduce step dedupes/merges themes and returns consolidated list with supporting doc IDs/chunk IDs.
+- Controls: chunk/token budget caps, max themes, strict-citation prompts, optional coverage reporting (which docs mention or omit a theme).
+- Frontend: “Analysis” page to select docs, start an analysis job, poll status, and render themes with citations and supporting docs. Reuse ingestion-job style polling.

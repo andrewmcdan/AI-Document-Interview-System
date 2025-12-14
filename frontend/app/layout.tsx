@@ -11,17 +11,24 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="min-h-screen bg-slate-50 text-slate-900">
+      <body>
         <Providers>
-          <div className="max-w-5xl mx-auto p-6 space-y-6">
-            <header className="border-b pb-4 flex items-start justify-between gap-4 flex-wrap">
-              <div>
-                <h1 className="text-2xl font-semibold">AI Document Interview System</h1>
-                <p className="text-sm text-slate-600">MVP frontend for upload, job status, and chat.</p>
-              </div>
-              <AuthPanel />
-            </header>
-            {children}
+          <div className="container">
+            <div className="shell">
+              <header className="stack" style={{ gap: 14 }}>
+                <div className="flex" style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "flex-start" }}>
+                  <div style={{ flex: 1, minWidth: 240 }}>
+                    <h1 className="title">AI Document Interview System</h1>
+                    <p className="subtitle">Upload, ingest, and ask grounded questions over your documents.</p>
+                  </div>
+                  <div style={{ minWidth: 280 }}>
+                    <AuthPanel />
+                  </div>
+                </div>
+                <div className="divider" />
+              </header>
+              {children}
+            </div>
           </div>
         </Providers>
       </body>

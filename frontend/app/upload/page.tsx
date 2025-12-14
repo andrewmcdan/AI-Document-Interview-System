@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useMemo, useState, useEffect } from "react";
 import { getJson, type ApiConfig } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
 
@@ -14,12 +14,17 @@ type IngestionJob = {
   finished_at?: string;
 };
 
+type UploadItem = {
+  file: File;
+  title: string;
+  description: string;
+};
+
 export default function UploadPage() {
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [file, setFile] = useState<File | null>(null);
-  const [job, setJob] = useState<IngestionJob | null>(null);
+  const [items, setItems] = useState<UploadItem[]>([]);
+  const [jobs, setJobs] = useState<IngestionJob[]>([]);
   const [loading, setLoading] = useState(false);
+  const [suggesting, setSuggesting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const { auth } = useAuth();
@@ -32,35 +37,52 @@ export default function UploadPage() {
     [auth]
   );
 
+  const onFilesSelected = (fileList: FileList | null) => {
+    const selected = Array.from(fileList ?? []);
+    setItems((prev) =>
+      selected.map((file) => {
+        const found = prev.find((p) => p.file.name === file.name && p.file.size === file.size);
+        return {
+          file,
+          title: found?.title || "",
+          description: found?.description || "",
+        };
+      })
+    );
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!file) {
-      setError("Select a file.");
+    if (!items.length) {
+      setError("Select at least one file.");
       return;
     }
     setLoading(true);
     setError(null);
+    setJobs([]);
+
+    const headers: Record<string, string> = {};
+    if (config.token) headers["Authorization"] = `Bearer ${config.token}`;
+    if (!config.token && config.devUserId) headers["X-User-Id"] = config.devUserId;
 
     try {
-      const form = new FormData();
-      form.append("title", title || file.name);
-      if (description) form.append("description", description);
-      form.append("file", file);
+      const created: IngestionJob[] = [];
+      for (const item of items) {
+        const form = new FormData();
+        form.append("title", item.title || item.file.name);
+        if (item.description) form.append("description", item.description);
+        form.append("file", item.file);
 
-      const headers: Record<string, string> = {};
-      if (config.token) headers["Authorization"] = `Bearer ${config.token}`;
-      if (!config.token && config.devUserId) headers["X-User-Id"] = config.devUserId;
-
-      const res = await fetch(`${config.baseUrl}/documents`, {
-        method: "POST",
-        body: form,
-        headers,
-      });
-      if (!res.ok) {
-        throw new Error(await res.text());
+        const res = await fetch(`${config.baseUrl}/documents`, {
+          method: "POST",
+          body: form,
+          headers,
+        });
+        if (!res.ok) throw new Error(await res.text());
+        const data: IngestionJob = await res.json();
+        created.push(data);
       }
-      const data: IngestionJob = await res.json();
-      setJob(data);
+      setJobs(created);
     } catch (err: any) {
       setError(err.message || "Upload failed");
     } finally {
@@ -68,67 +90,188 @@ export default function UploadPage() {
     }
   };
 
-  const refreshJob = async () => {
-    if (!job) return;
+  const refreshJob = async (job: IngestionJob) => {
     try {
       const data = await getJson<{ status: string; error?: string | null; started_at?: string; finished_at?: string }>(
         config,
         `/ingestion_jobs/${job.id}/status`
       );
-      setJob({ ...job, ...data });
+      setJobs((prev) => prev.map((j) => (j.id === job.id ? { ...j, ...data } : j)));
     } catch (err: any) {
       setError(err.message || "Failed to refresh job");
     }
   };
 
+  const suggestMeta = async () => {
+    if (!items.length) {
+      setError("Select a file first.");
+      return;
+    }
+    setSuggesting(true);
+    setError(null);
+    try {
+      const headers: Record<string, string> = {};
+      if (config.token) headers["Authorization"] = `Bearer ${config.token}`;
+      if (!config.token && config.devUserId) headers["X-User-Id"] = config.devUserId;
+
+      const results = await Promise.all(
+        items.map(async (item) => {
+          const form = new FormData();
+          form.append("file", item.file);
+          const res = await fetch(`${config.baseUrl}/documents/describe`, {
+            method: "POST",
+            body: form,
+            headers,
+          });
+          if (!res.ok) throw new Error(await res.text());
+          const data: { title: string; description: string } = await res.json();
+          return {
+            key: item.file.name + item.file.size,
+            title: data.title,
+            description: data.description,
+          };
+        })
+      );
+
+      setItems((prev) =>
+        prev.map((item) => {
+          const match = results.find((r) => r.key === item.file.name + item.file.size);
+          if (!match) return item;
+          return {
+            ...item,
+            title: item.title || match.title,
+            description: item.description || match.description,
+          };
+        })
+      );
+    } catch (err: any) {
+      setError(err.message || "Failed to suggest metadata");
+    } finally {
+      setSuggesting(false);
+    }
+  };
+
+  // Auto-refresh active jobs
+  useEffect(() => {
+    const active = jobs.filter((j) => ["pending", "running"].includes(j.status));
+    if (!active.length) return;
+    const id = setInterval(() => {
+      active.forEach((job) => refreshJob(job));
+    }, 3000);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobs, config.baseUrl, config.token, config.devUserId]);
+
   return (
-    <main className="space-y-4">
-      <h2 className="text-xl font-semibold">Upload & Jobs</h2>
-      <form className="space-y-3" onSubmit={handleSubmit}>
-        <div>
-          <label className="block text-sm font-medium">Title</label>
-          <input className="w-full border rounded px-2 py-1" value={title} onChange={(e) => setTitle(e.target.value)} />
+    <main className="stack" style={{ gap: 16 }}>
+      <div className="card stack">
+        <div className="stack" style={{ gap: 6 }}>
+          <p className="badge">Ingestion</p>
+          <h2 className="title" style={{ margin: 0 }}>
+            Upload & Jobs
+          </h2>
+          <p className="subtitle">Send files to the background pipeline and poll their status.</p>
         </div>
-        <div>
-          <label className="block text-sm font-medium">Description</label>
-          <input
-            className="w-full border rounded px-2 py-1"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium">File</label>
-          <input type="file" onChange={(e) => setFile(e.target.files?.[0] || null)} />
-        </div>
-        <button
-          type="submit"
-          disabled={loading}
-          className="px-3 py-1 bg-blue-600 text-white rounded disabled:opacity-50"
-        >
-          {loading ? "Uploading..." : "Upload"}
-        </button>
-      </form>
+        <form className="stack" style={{ gap: 12 }} onSubmit={handleSubmit}>
+          <div className="stack" style={{ gap: 6 }}>
+            <label className="label">Files</label>
+            <input className="input" type="file" multiple onChange={(e) => onFilesSelected(e.target.files)} />
+            {items.length > 0 && (
+              <p className="subtitle" style={{ margin: 0 }}>
+                {items.length} file(s) selected
+              </p>
+            )}
+          </div>
 
-      {error && <p className="text-red-600 text-sm">{error}</p>}
-
-      {job && (
-        <div className="border p-3 rounded bg-white space-y-2">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm">Job ID: {job.id}</p>
-              <p className="text-sm">Document ID: {job.document_id}</p>
+          {items.length > 0 && (
+            <div className="stack" style={{ gap: 12 }}>
+              {items.map((item, idx) => (
+                <div key={item.file.name + item.file.size} className="list-item stack" style={{ gap: 10 }}>
+                  <div
+                    className="flex"
+                    style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
+                  >
+                    <p style={{ margin: 0, fontWeight: 600 }}>
+                      {idx + 1}. {item.file.name}
+                    </p>
+                    <span className="pill">{(item.file.size / 1024 / 1024).toFixed(2)} MB</span>
+                  </div>
+                  <div className="grid two-col">
+                    <div className="stack" style={{ gap: 6 }}>
+                      <label className="label">Title</label>
+                      <input
+                        className="input"
+                        value={item.title}
+                        placeholder={item.file.name}
+                        onChange={(e) =>
+                          setItems((prev) =>
+                            prev.map((p) => (p.file === item.file ? { ...p, title: e.target.value } : p))
+                          )
+                        }
+                      />
+                    </div>
+                    <div className="stack" style={{ gap: 6 }}>
+                      <label className="label">Description</label>
+                      <input
+                        className="input"
+                        value={item.description}
+                        onChange={(e) =>
+                          setItems((prev) =>
+                            prev.map((p) => (p.file === item.file ? { ...p, description: e.target.value } : p))
+                          )
+                        }
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
-            <button className="px-2 py-1 border rounded text-sm" onClick={refreshJob}>
-              Refresh status
+          )}
+
+          <div className="flex" style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={suggestMeta}
+              disabled={suggesting || items.length === 0}
+            >
+              {suggesting ? "Thinking..." : "Suggest title & description"}
+            </button>
+            <button type="submit" disabled={loading} className="btn">
+              {loading ? "Uploading..." : "Upload"}
             </button>
           </div>
-          <p className="text-sm">
-            Status: <strong>{job.status}</strong>
-          </p>
-          {job.error && <p className="text-sm text-red-600">Error: {job.error}</p>}
-          {job.started_at && <p className="text-xs text-slate-600">Started: {job.started_at}</p>}
-          {job.finished_at && <p className="text-xs text-slate-600">Finished: {job.finished_at}</p>}
+        </form>
+        {error && <p className="subtitle" style={{ color: "#fca5a5" }}>{error}</p>}
+      </div>
+
+      {jobs.length > 0 && (
+        <div className="stack" style={{ gap: 10 }}>
+          {jobs.map((job) => (
+            <div key={job.id} className="card stack" style={{ gap: 8 }}>
+              <div className="flex" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div className="stack" style={{ gap: 4 }}>
+                  <p className="label">Job ID</p>
+                  <p style={{ margin: 0 }}>{job.id}</p>
+                  <p className="label">Document ID</p>
+                  <p style={{ margin: 0 }}>{job.document_id}</p>
+                </div>
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => refreshJob(job)}
+                  style={{ padding: "8px 12px" }}
+                >
+                  Refresh
+                </button>
+              </div>
+              <p className="badge">
+                Status: <strong style={{ color: "white" }}>{job.status}</strong>
+              </p>
+              {job.error && <p className="subtitle" style={{ color: "#fca5a5" }}>Error: {job.error}</p>}
+              {job.started_at && <p className="subtitle">Started: {job.started_at}</p>}
+              {job.finished_at && <p className="subtitle">Finished: {job.finished_at}</p>}
+            </div>
+          ))}
         </div>
       )}
     </main>

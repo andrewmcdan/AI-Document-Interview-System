@@ -7,6 +7,7 @@ import io
 import math
 import re
 import uuid
+from datetime import datetime
 from typing import Iterable
 
 import fitz
@@ -44,13 +45,14 @@ class IngestionPipeline:
         document_id: str,
         db: AsyncSession,
         *,
+        storage_key: str | None = None,
         title: str,
         description: str | None = None,
         owner_id: str | None = None,
         job_id: str | None = None,
     ) -> DocumentSchema:
         """Ingest a document file into storage, DB metadata, and the vector store."""
-        object_key = f"{document_id}/{file_path.name}"
+        object_key = storage_key or f"{document_id}/{file_path.name}"
         await self._mark_job_running(db, job_id)
 
         self.object_store.upload_file(file_path, object_key=object_key)
@@ -229,6 +231,14 @@ class IngestionPipeline:
         owner_id: str | None,
         storage_key: str,
     ) -> models.Document:
+        existing = await db.get(models.Document, document_id)
+        if existing:
+            existing.title = title
+            existing.description = description
+            existing.owner_id = owner_id
+            existing.storage_key = storage_key
+            return existing
+
         document = models.Document(
             id=document_id,
             title=title,

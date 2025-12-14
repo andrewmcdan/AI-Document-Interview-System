@@ -18,12 +18,14 @@ async def get_current_user(
                 detail="Missing or invalid Authorization header",
             )
         try:
+            expected_aud = settings.auth_audience or None
+            required_claims = ["sub"] + (["aud"] if expected_aud else [])
             claims = jwt.decode(
                 token,
                 settings.auth_secret,
                 algorithms=[settings.auth_algorithm],
-                audience=settings.auth_audience,
-                options={"require": ["sub"]},
+                audience=expected_aud,
+                options={"require": required_claims},
             )
         except jwt.PyJWTError as exc:
             raise HTTPException(

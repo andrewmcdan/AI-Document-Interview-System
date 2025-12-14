@@ -34,3 +34,15 @@ class OpenAIClient:
             temperature=temperature,
         )
         return response.choices[0].message.content  # type: ignore[index]
+
+    def stream_chat(self, prompt: str, temperature: float = 0.1):
+        stream = self.client.chat.completions.create(
+            model=self.completion_model,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=temperature,
+            stream=True,
+        )
+        for chunk in stream:
+            delta = chunk.choices[0].delta.content  # type: ignore[index]
+            if delta:
+                yield delta

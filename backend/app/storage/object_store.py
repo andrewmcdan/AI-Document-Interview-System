@@ -20,6 +20,10 @@ class ObjectStore:
     def delete_prefix(self, prefix: str) -> None:  # pragma: no cover - interface
         raise NotImplementedError
 
+    def purge_all(self) -> None:  # pragma: no cover - interface
+        """Remove all stored objects."""
+        raise NotImplementedError
+
 
 @dataclass
 class S3ObjectStore(ObjectStore):
@@ -56,6 +60,19 @@ class S3ObjectStore(ObjectStore):
         if objects_to_delete:
             self.client.delete_objects(Bucket=self.bucket, Delete={"Objects": objects_to_delete})
 
+    def purge_all(self) -> None:
+        try:
+            paginator = self.client.get_paginator("list_objects_v2")
+            objects_to_delete = []
+            for page in paginator.paginate(Bucket=self.bucket):
+                for obj in page.get("Contents", []):
+                    objects_to_delete.append({"Key": obj["Key"]})
+            if objects_to_delete:
+                self.client.delete_objects(Bucket=self.bucket, Delete={"Objects": objects_to_delete})
+        except self.client.exceptions.NoSuchBucket:
+            # Nothing to purge if bucket does not exist.
+            return
+
 
 @dataclass
 class LocalObjectStore(ObjectStore):
@@ -83,6 +100,11 @@ class LocalObjectStore(ObjectStore):
             shutil.rmtree(target, ignore_errors=True)
         elif target.exists():
             target.unlink(missing_ok=True)
+
+    def purge_all(self) -> None:
+        if self.base_path.exists():
+            shutil.rmtree(self.base_path, ignore_errors=True)
+        self.base_path.mkdir(parents=True, exist_ok=True)
 
 
 def get_object_store_provider(settings: Settings):

@@ -62,6 +62,7 @@ Auth note: requests require `X-User-Id` header for scoping documents, conversati
 Auth (current behavior):
 - Preferred: `Authorization: Bearer <JWT>` signed with `AIDOC_AUTH_SECRET` (HS256; `aud` optional). Uses `sub` as user ID.
 - Dev fallback: if `AIDOC_AUTH_SECRET` is unset, you can send `X-User-Id` for scoping. Remove this in production.
+- Demo login endpoint: `POST /auth/login` with `user_id` to obtain a signed JWT (uses server-side secret; not for production auth).
 
 ## Dev scripts
 - `make lint` – ruff check
