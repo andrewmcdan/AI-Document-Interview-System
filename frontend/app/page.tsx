@@ -6,6 +6,7 @@ const links = [
   { href: "/upload", label: "Upload & Jobs", blurb: "Send files to the ingestion pipeline and track job status." },
   { href: "/chat", label: "Chat & Query", blurb: "Ask grounded questions over your ingested documents." },
   { href: "/documents", label: "Documents", blurb: "Browse document metadata and IDs for filtering." },
+  { href: "/analysis", label: "Analysis", blurb: "Run deep analysis jobs across documents." },
   { href: "/login", label: "Login (demo JWT)", blurb: "Get a signed token for local testing." },
   { href: "/admin", label: "Admin Reset", blurb: "Dev-only purge to return to a clean state." },
 ];

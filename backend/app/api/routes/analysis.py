@@ -10,9 +10,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api import deps
 from app.api.security import get_current_user
+from app.core.config import get_settings
 from app.db import models
 from app.schemas.analysis import AnalysisJob as AnalysisJobSchema, AnalysisRequest
 from app.services.analysis import AnalysisService
+from app.services.openai_client import OpenAIClient
 
 router = APIRouter(prefix="/analysis", tags=["analysis"])
 
@@ -25,6 +27,7 @@ async def start_analysis(
     db: AsyncSession = Depends(deps.get_db_session),
     session_factory=Depends(deps.get_sessionmaker),
     analysis_service: AnalysisService = Depends(deps.get_analysis_service),
+    settings=Depends(get_settings),
 ) -> AnalysisJobSchema:
     job_id = str(uuid.uuid4())
     job = models.AnalysisJob(
@@ -45,14 +48,15 @@ async def start_analysis(
         job_id=job_id,
         owner_id=current_user,
         request=request,
+        settings=settings,
     )
 
     return AnalysisJobSchema.model_validate(job)
 
 
-async def _run_analysis_job(session_factory, job_id: str, owner_id: str, request: AnalysisRequest):
+async def _run_analysis_job(session_factory, job_id: str, owner_id: str, request: AnalysisRequest, settings):
     async with session_factory() as session:
-        service = AnalysisService(deps.get_openai_client())
+        service = AnalysisService(OpenAIClient.from_settings(settings))
         try:
             await service.run_analysis(
                 db=session,

@@ -3,6 +3,7 @@
 import { FormEvent, useMemo, useState, useEffect } from "react";
 import { postJson, type ApiConfig, fetchDocuments, getJson } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
+import { Markdown } from "../../components/Markdown";
 
 type AnswerSource = {
   document_id: string;
@@ -366,9 +367,7 @@ export default function ChatPage() {
                   {m.role === "assistant" ? "Assistant" : "You"}{" "}
                   {m.created_at ? `• ${new Date(m.created_at).toLocaleTimeString()}` : ""}
                 </p>
-                <p className="subtitle" style={{ margin: 0, color: "#e2e8f0" }}>
-                  {m.content}
-                </p>
+                <Markdown content={m.content} />
               </div>
             ))}
           </div>
@@ -387,9 +386,9 @@ export default function ChatPage() {
                         score: {s.score?.toFixed(3) ?? "n/a"}
                       </p>
                       {s.metadata?.text_snippet && (
-                        <p className="subtitle" style={{ margin: 0 }}>
-                          {s.metadata.text_snippet}
-                        </p>
+                        <div className="subtitle" style={{ margin: 0 }}>
+                          <Markdown content={s.metadata.text_snippet} />
+                        </div>
                       )}
                     </div>
                   </li>

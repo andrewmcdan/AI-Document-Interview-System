@@ -223,3 +223,35 @@ button {
   color: #9ae6ff;
   text-decoration: underline;
 }
+
+.markdown {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text);
+  white-space: normal;
+}
+
+.markdown p {
+  margin: 0 0 0.5em;
+}
+
+.markdown ul,
+.markdown ol {
+  margin: 0.25em 0 0.75em 1.2em;
+  padding: 0;
+}
+
+.markdown code {
+  background: rgba(255, 255, 255, 0.06);
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-family: "Space Grotesk", "Inter", monospace;
+}
+
+.markdown pre {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px;
+  overflow-x: auto;
+}
