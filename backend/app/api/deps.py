@@ -9,6 +9,7 @@ from app.api.security import get_current_user
 from app.services.ingestion import IngestionPipeline
 from app.services.openai_client import OpenAIClient
 from app.services.retrieval import RetrievalService
+from app.services.analysis import AnalysisService
 from app.storage.object_store import ObjectStore, get_object_store_provider
 from app.storage.vector_store import VectorStore
 
@@ -56,3 +57,9 @@ def get_retrieval_service(
     openai_client: OpenAIClient = Depends(get_openai_client),
 ) -> RetrievalService:
     return RetrievalService(vector_store=vector_store, openai_client=openai_client)
+
+
+def get_analysis_service(
+    openai_client: OpenAIClient = Depends(get_openai_client),
+) -> AnalysisService:
+    return AnalysisService(openai_client)

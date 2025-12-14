@@ -124,8 +124,14 @@ async def _log_message(
         await db.flush()
         conversation_id = convo.id
 
-    # If no meaningful title yet and we have an AI client, generate one from the first Q/A.
-    if openai_client and (not convo.title or convo.title.strip() == "" or convo.title.strip() == "Untitled conversation"):
+    # If no meaningful title yet (or it's just the question stub) and we have an AI client, generate one from the first Q/A.
+    should_generate = False
+    if not convo.title or convo.title.strip() == "" or convo.title.strip() == "Untitled conversation":
+        should_generate = True
+    elif convo.title.strip() == request.question.strip():
+        should_generate = True
+
+    if openai_client and should_generate:
         try:
             prompt = (
                 "Create a concise conversation title (max 6 words) based on the user question and assistant answer.\n"

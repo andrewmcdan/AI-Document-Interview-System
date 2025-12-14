@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.api.routes import documents, health, query
-from app.api.routes import conversations, query_logs, ingestion_jobs, auth, admin
+from app.api.routes import conversations, query_logs, ingestion_jobs, auth, admin, analysis
 from app.core.config import get_settings
 from app.core.logging import get_logger, setup_logging
 from app.db.session import init_models
@@ -68,6 +68,7 @@ def create_app() -> FastAPI:
     app.include_router(ingestion_jobs.router)
     app.include_router(auth.router)
     app.include_router(admin.router)
+    app.include_router(analysis.router)
 
     return app
 
