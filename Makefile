@@ -16,7 +16,7 @@ run-api: install-backend
 	AIDOC_ENVIRONMENT=development $(UVICORN) app.main:app --reload --app-dir backend
 
 dev-up:
-	docker-compose up -d postgres qdrant minio
+	docker compose up -d postgres qdrant minio
 
 dev-down:
-	docker-compose down
+	docker compose down

@@ -42,7 +42,7 @@ class DocumentChunk(Base):
         String(64), ForeignKey("documents.id", ondelete="CASCADE"), index=True
     )
     text: Mapped[str] = mapped_column(Text, nullable=False)
-    metadata: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    meta: Mapped[dict[str, Any]] = mapped_column("metadata", JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

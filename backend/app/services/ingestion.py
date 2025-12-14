@@ -110,7 +110,7 @@ class IngestionPipeline:
                     id=chunk_id,
                     document_id=document_id,
                     text=chunk_text,
-                    metadata={"chunk_index": index, "start_word": start, "end_word": end},
+                    meta={"chunk_index": index, "start_word": start, "end_word": end},
                 )
             )
 
@@ -142,7 +142,11 @@ class IngestionPipeline:
         points: list[PointStruct] = []
         chunk_rows: list[models.DocumentChunk] = []
 
-        for chunk, embedding in zip(chunks, embeddings):
+        chunk_list = list(chunks)
+        if len(chunk_list) != len(embeddings):
+            raise ValueError("Mismatch between chunks and embeddings lengths.")
+
+        for chunk, embedding in zip(chunk_list, embeddings):
             points.append(
                 PointStruct(
                     id=chunk.id,
@@ -151,7 +155,7 @@ class IngestionPipeline:
                         "document_id": document_id,
                         "chunk_id": chunk.id,
                         "text": chunk.text,
-                        "metadata": chunk.metadata,
+                        "meta": chunk.meta,
                     },
                 )
             )
@@ -160,7 +164,7 @@ class IngestionPipeline:
                     id=chunk.id,
                     document_id=document_id,
                     text=chunk.text,
-                    metadata=chunk.metadata,
+                    meta=chunk.meta,
                 )
             )
 

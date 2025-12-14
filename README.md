@@ -6,9 +6,9 @@ Scaffold for the MVP described in the project overview PDF. The system ingests u
 - `backend/`: FastAPI application with ingestion and retrieval placeholders.
   - `app/core/`: configuration via Pydantic settings.
   - `app/api/routes/`: document, query, and health endpoints.
-  - `app/services/`: OpenAI wrapper plus ingestion/retrieval skeletons.
+  - `app/services/`: OpenAI wrapper plus ingestion/retrieval services.
   - `app/storage/`: S3 object store + Qdrant vector store helpers.
-  - `app/db/`: SQLAlchemy async session factory.
+  - `app/db/`: SQLAlchemy async session factory and models for documents and chunks.
   - `requirements.txt` and `.env.example` for local setup.
 - `docs/ARCHITECTURE.md`: distilled notes from the PDF.
 - `frontend/`: placeholder; fill in with Next.js/Vite client when ready.
@@ -25,6 +25,8 @@ make run-api
 ```
 
 Configure environment variables via `backend/.env.example`. Update `AIDOC_DATABASE_URL`, `AIDOC_OPENAI_API_KEY`, and storage endpoints as needed.
+
+Create the Postgres tables before running locally (models live in `backend/app/db/models.py`); add Alembic migrations or call `Base.metadata.create_all` during bootstrap in early development.
 
 ## Next Steps
 - Implement text extraction (PDF/DOCX + OCR fallback) and chunking in `app/services/ingestion.py`.
