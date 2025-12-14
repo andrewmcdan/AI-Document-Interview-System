@@ -1,6 +1,9 @@
 # AI Document Interview System
 
-MVP that ingests documents, chunks/embeds them, and answers questions with grounded citations. Includes background ingestion jobs, chat with conversations, streaming answers, and a deep analysis mode to merge themes across docs.
+This is an end-to-end “document interview” stack: you upload handbooks/policies, we extract/normalize/chunk and embed them, then you can query or run deep analysis with grounded citations. It includes:
+- FastAPI backend with background ingestion jobs, retrieval, conversations, streaming chat, and deep analysis across documents.
+- Next.js frontend for uploads (with AI metadata), chat with conversation history, and an analysis page to find common themes across docs.
+- Qdrant for vector search, Postgres for metadata, and S3/MinIO or local storage for files.
 
 ## Repository Layout
 - `backend/`: FastAPI app (ingestion, retrieval, conversations, analysis, auth).
@@ -79,3 +82,6 @@ Ingestion notes:
 - `make test` – pytest (sets `AIDOC_ENVIRONMENT=test`)
 - `make migrate-up` / `make migrate-down` – Alembic migrations using `AIDOC_DATABASE_URL`
 - Upload limits: accepts PDF/DOCX/TXT; rejects files over 25MB and unsupported MIME types.
+
+---
+This project was authored with OpenAI’s Codex via VS Code, with guidance and troubleshooting by Andrew McDaniel.
