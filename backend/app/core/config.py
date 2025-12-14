@@ -30,8 +30,15 @@ class Settings(BaseSettings):
     chunk_size_tokens: int = 600
     chunk_overlap_tokens: int = 100
 
+    storage_backend: str = "s3"  # options: s3, local
+    local_storage_path: str = "./local_storage"
+
+    auth_secret: str | None = None
+    auth_algorithm: str = "HS256"
+    auth_audience: str | None = None
+
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=(".env", "backend/.env"),
         env_prefix="AIDOC_",
         extra="ignore",
     )

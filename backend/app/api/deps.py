@@ -5,10 +5,11 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.config import Settings, get_settings
 from app.db.session import get_session, get_session_factory
+from app.api.security import get_current_user
 from app.services.ingestion import IngestionPipeline
 from app.services.openai_client import OpenAIClient
 from app.services.retrieval import RetrievalService
-from app.storage.object_store import ObjectStore
+from app.storage.object_store import ObjectStore, get_object_store_provider
 from app.storage.vector_store import VectorStore
 
 
@@ -24,7 +25,8 @@ async def get_db_session(
 
 
 def get_object_store(settings: Settings = Depends(get_settings)) -> ObjectStore:
-    return ObjectStore.from_settings(settings)
+    provider = get_object_store_provider(settings)
+    return provider(settings)
 
 
 def get_vector_store(settings: Settings = Depends(get_settings)) -> VectorStore:

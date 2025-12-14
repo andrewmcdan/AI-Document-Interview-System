@@ -10,6 +10,9 @@ class QueryRequest(BaseModel):
     question: str
     conversation_id: str | None = None
     top_k: int = 5
+    document_ids: list[str] | None = None
+    min_score: float | None = None
+    user_id: str | None = None
 
 
 class AnswerSource(BaseModel):

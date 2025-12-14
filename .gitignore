@@ -8,3 +8,14 @@ __pycache__/
 .idea/
 /tests/__pycache__/
 /tests/*.pyc
+*/.node_modules/
+/dist/
+/build/
+/.next/
+/out/
+/.turbo/
+/.turbo/cache/
+.next/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml

@@ -5,7 +5,7 @@ from typing import Any, Iterable
 
 from qdrant_client import QdrantClient
 from qdrant_client.http.exceptions import UnexpectedResponse
-from qdrant_client.models import Distance, PointStruct, VectorParams
+from qdrant_client.models import Distance, FieldCondition, Filter, MatchValue, PointStruct, VectorParams
 
 from app.core.config import Settings
 
@@ -47,3 +47,14 @@ class VectorStore:
             limit=limit,
             with_payload=True,
         )
+
+    def delete_by_document(self, document_id: str) -> None:
+        flt = Filter(
+            must=[
+                FieldCondition(
+                    key="document_id",
+                    match=MatchValue(value=document_id),
+                )
+            ]
+        )
+        self.client.delete(collection_name=self.collection_name, wait=True, filter=flt)

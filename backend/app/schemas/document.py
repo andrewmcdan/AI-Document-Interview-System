@@ -21,6 +21,7 @@ class Document(DocumentBase):
     owner_id: str | None = None
     storage_key: str | None = None
     created_at: datetime | None = None
+    deleted_at: datetime | None = None
     model_config = ConfigDict(from_attributes=True)
 
 
