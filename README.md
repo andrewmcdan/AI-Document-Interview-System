@@ -1,19 +1,18 @@
 # AI Document Interview System
 
-Scaffold for the MVP described in the project overview PDF. The system ingests user documents, embeds chunked text, and answers natural language questions with grounded citations.
+MVP that ingests documents, chunks/embeds them, and answers questions with grounded citations. Includes background ingestion jobs, chat with conversations, streaming answers, and a deep analysis mode to merge themes across docs.
 
 ## Repository Layout
-- `backend/`: FastAPI application with ingestion and retrieval placeholders.
-  - `app/core/`: configuration via Pydantic settings.
-  - `app/api/routes/`: document, query, and health endpoints.
-  - `app/services/`: OpenAI wrapper plus ingestion/retrieval services.
-  - `app/storage/`: S3 object store + Qdrant vector store helpers.
-  - `app/db/`: SQLAlchemy async session factory and models for documents and chunks.
-  - `requirements.txt` and `.env.example` for local setup.
-- `docs/ARCHITECTURE.md`: distilled notes from the PDF.
-- `frontend/`: placeholder; fill in with Next.js/Vite client when ready.
-- `docker-compose.yml`: Postgres, Qdrant, MinIO, and the API service.
-- `Makefile`: quick tasks for creating a venv, installing backend deps, running the API, and bringing up infra.
+- `backend/`: FastAPI app (ingestion, retrieval, conversations, analysis, auth).
+  - `app/api/routes/`: documents, ingestion_jobs, query (+ streaming), conversations, query_logs, analysis, auth, admin reset, health.
+  - `app/services/`: ingestion pipeline, retrieval, analysis, OpenAI wrapper.
+  - `app/storage/`: S3/local object store + Qdrant vector store helpers.
+  - `app/db/`: async SQLAlchemy session + models (documents, chunks, ingestion_jobs, conversations/messages, query_logs, analysis_jobs).
+  - `requirements*.txt`, `.env.example` for local setup.
+- `frontend/`: Next.js app with upload (batch + AI metadata), chat (streaming, conversations, doc filters), analysis page, documents list, login, admin reset.
+- `docs/ARCHITECTURE.md`: notes from the PDF.
+- `docker-compose.yml`: Postgres, Qdrant, MinIO, and API service.
+- `Makefile`: quick tasks for venv, backend deps, API, and local infra.
 
 ## Quickstart
 ```bash
@@ -26,9 +25,18 @@ make run-api
 
 # for development tooling (lint/format/tests/migrations)
 make install-dev
+
+# frontend
+cd frontend
+npm install
+cp .env.example .env.local   # set NEXT_PUBLIC_API_BASE_URL (default http://localhost:8000)
+npm run dev
+
+# or run everything in docker (api + frontend + deps)
+docker compose up --build
 ```
 
-Configure environment variables via `backend/.env.example`. Update `AIDOC_DATABASE_URL`, `AIDOC_OPENAI_API_KEY`, and storage endpoints as needed.
+Configure environment variables via `backend/.env.example`. Update `AIDOC_DATABASE_URL`, `AIDOC_OPENAI_API_KEY`, storage backend, and auth secret as needed.
 Storage options:
 - Default S3/MinIO (`AIDOC_STORAGE_BACKEND=s3` with `AIDOC_S3_*` settings).
 - Local filesystem: set `AIDOC_STORAGE_BACKEND=local` and `AIDOC_LOCAL_STORAGE_PATH` (uploads will be stored under that directory).
@@ -44,25 +52,26 @@ Ingestion notes:
 - OCR note: install `tesseract-ocr` locally; the API Docker image installs Tesseract/Poppler, so OCR works inside `docker-compose`.
 - Ingestion jobs: uploads create `ingestion_jobs` records (status pending/running/completed/failed); poll `GET /ingestion_jobs` or `/ingestion_jobs/{id}/status`.
 
-Health endpoints:
-- `/health` basic heartbeat
-- `/ready` checks DB, Qdrant, object storage, and OpenAI connectivity
+### API surface (high level)
+- Upload: `POST /documents` (background ingestion job), `GET /ingestion_jobs`, `GET /ingestion_jobs/{id}/status`, soft-delete `/documents/{id}`.
+- Query: `POST /query` and `/query/stream`; conversation-scoped: `POST /conversations/{id}/query` and `/conversations/{id}/query/stream`.
+- Conversations: `GET /conversations`, `GET /conversations/{id}`, `GET /conversations/{id}/messages`, `PATCH /conversations/{id}/title`.
+- Analysis: `POST /analysis` to start deep analysis (background job), `GET /analysis`, `GET /analysis/{id}`.
+- Health: `/health`, `/ready` (checks DB, Qdrant, object storage, OpenAI).
+- Admin: `/admin/reset` (dev-only purge of DB/vector/object storage).
+- Auth: `/auth/login` (demo JWT signer).
 
-Query options:
-- `document_ids` (optional) to restrict retrieval to specific documents.
-- `min_score` (optional) to drop low-confidence vector hits.
-- `user_id` (optional) to scope retrieval to a user (expects owner_id on documents/chunks).
+### Auth
+- Preferred: `Authorization: Bearer <JWT>` signed with `AIDOC_AUTH_SECRET` (HS256; `sub` used as user ID; `aud` optional).
+- Dev fallback: if no secret is set, use `X-User-Id`. Remove in production.
 
-Conversation support:
-- `/query` and `/conversations/{id}/query` log messages to conversations/messages tables; new conversations are created automatically when no ID is supplied.
-- Conversation APIs: `GET /conversations?user_id=...`, `GET /conversations/{id}`, `GET /conversations/{id}/messages`.
-- Query logs: `GET /query_logs?user_id=...` (logs are appended automatically on queries).
-
-Auth note: requests require `X-User-Id` header for scoping documents, conversations, query logs, and retrievals. Replace with real auth/JWT in production.
-Auth (current behavior):
-- Preferred: `Authorization: Bearer <JWT>` signed with `AIDOC_AUTH_SECRET` (HS256; `aud` optional). Uses `sub` as user ID.
-- Dev fallback: if `AIDOC_AUTH_SECRET` is unset, you can send `X-User-Id` for scoping. Remove this in production.
-- Demo login endpoint: `POST /auth/login` with `user_id` to obtain a signed JWT (uses server-side secret; not for production auth).
+### Frontend pages
+- `/login`: get a demo JWT.
+- `/upload`: batch upload, AI metadata suggestion, auto job polling.
+- `/documents`: list docs.
+- `/chat`: conversations, streaming answers, doc filters, inline title editing.
+- `/analysis`: start/poll deep analysis jobs and view themes/answer.
+- `/admin`: dev reset.
 
 ## Dev scripts
 - `make lint` – ruff check
@@ -70,10 +79,3 @@ Auth (current behavior):
 - `make test` – pytest (sets `AIDOC_ENVIRONMENT=test`)
 - `make migrate-up` / `make migrate-down` – Alembic migrations using `AIDOC_DATABASE_URL`
 - Upload limits: accepts PDF/DOCX/TXT; rejects files over 25MB and unsupported MIME types.
-
-## Next Steps
-- Implement text extraction (PDF/DOCX + OCR fallback) and chunking in `app/services/ingestion.py`.
-- Define database models/migrations for users, documents, chunks, conversations, and query logs.
-- Flesh out retrieval prompt building and citation formatting in `app/services/retrieval.py`.
-- Connect API routes to persistence (Postgres) and background workers for long-running ingestion.
-- Stand up the frontend client to handle uploads, chat flows, and citation display.

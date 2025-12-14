@@ -36,7 +36,11 @@ services:
 
   api:
     build: ./backend
-    env_file: backend/.env.example
+    env_file: backend/.env
+    environment:
+      AIDOC_DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/ai_docs
+      AIDOC_QDRANT_URL: http://qdrant:6333
+      AIDOC_S3_ENDPOINT_URL: http://minio:9000
     depends_on:
       - postgres
       - qdrant
@@ -46,6 +50,15 @@ services:
       - ./backend:/app
     ports:
       - "8000:8000"
+
+  frontend:
+    build: ./frontend
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: http://api:8000
+    depends_on:
+      - api
+    ports:
+      - "3000:3000"
 
 volumes:
   pgdata:

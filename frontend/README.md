@@ -1,6 +1,6 @@
-# Frontend Placeholder
+# Frontend (Next.js)
 
-Minimal Next.js frontend scaffolded for integration testing.
+MVP client for uploads, chat, and deep analysis.
 
 ## Setup
 ```bash
@@ -12,11 +12,13 @@ npm run dev
 ```
 
 ## Pages
-- `/upload`: upload a document (with JWT or dev user header), view returned ingestion job id, and refresh job status.
-- `/chat`: send questions (optionally filtered to document IDs), view answers and citations.
+- `/login`: get a demo JWT from the backend (`/auth/login`).
+- `/upload`: batch upload with AI-suggested title/description, background ingestion jobs with auto-polling.
+- `/documents`: list your documents/IDs.
+- `/chat`: conversations with streaming answers, doc filters, inline title editing (AI-suggested), and sources.
+- `/analysis`: start/poll deep analysis jobs across selected docs; view answers/themes.
+- `/admin`: dev-only purge reset.
 
 ## Auth
 - Preferred: `Authorization: Bearer <JWT>` (HS256, `sub` used as user ID).
 - Dev fallback: `X-User-Id` when JWT is not set and backend allows it.
-
-No dependencies are installed yet; scaffold once the desired frontend stack is chosen.

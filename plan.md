@@ -66,7 +66,7 @@
 - [x] Add admin reset screen for dev purge workflow.
 - Add toast/error banners and inline progress on uploads.
 - [x] Add AI-suggested conversation titles and inline title editing.
-- [ ] Add deep analysis page (start/poll jobs) and render themes/results.
+- [x] Add deep analysis page (start/poll jobs) and render themes/results.
 
 ## Future Plans
 - External worker/queue (Celery/RQ/Arq) for ingestion with retries and large files; virus scanning stub.
